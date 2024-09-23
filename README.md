@@ -30,6 +30,8 @@ Step 1:  Create Repository in your Local Machine
 git clone https://github.com/Sachneu/JWKSserver.git
 
 
+ cd JWKSserver
+
 Step2: Create virtual environment
 
 python -m venv venv
