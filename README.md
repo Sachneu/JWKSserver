@@ -60,6 +60,21 @@ python app.py
 /jwks: Returns the JWKS.
 
 
+
+### Open another terminal (or Command Prompt) and use the following commands to test the endpoints:
+
+Get JWKS:
+curl -X GET http://127.0.0.1:8080/jwks
+
+
+Authenticate (get JWT):
+curl -X POST http://127.0.0.1:8080/auth
+
+
+Authenticate with expired JWT:
+curl -X POST http://127.0.0.1:8080/auth?expired=true
+
+
 ### Testing
 You can run the tests using pytest:
 
@@ -75,7 +90,6 @@ pytest --cov=app test_app.py
 
 
 
-On macOS/Linux:  source venv/bin/activate
 
 
 
