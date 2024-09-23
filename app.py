@@ -13,7 +13,7 @@ def home():
     return "Welcome to the JWKS Server", 200
 
 # Global variable to hold RSA keys
-rsa_keys = []  # Initialize it as a list or a dictionary as per your requirement
+rsa_keys = []  
 
 def generate_rsa_key():
     private_key = rsa.generate_private_key(
