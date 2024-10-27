@@ -1,3 +1,4 @@
+## Project 2 (continued from project 1)
 # JWKS Server
 
 ## Overview
@@ -43,7 +44,8 @@ On Windows:   venv\Scripts\activate
 
 Step 4: Install required packages:
 
-pip install Flask PyJWT Flask-Cors
+pip install Flask PyJWT Flask-Cors pytest coverage
+
 
 
 Step 5: Run
@@ -76,9 +78,12 @@ curl -X POST http://127.0.0.1:8080/auth?expired=true
 
 
 ### Testing
-You can run the tests using pytest:
+To run tests in test_app.py with coverage, use the following command:
 
-pytest --cov=app test_app.py
+coverage run -m unittest discover
+coverage report -m
+
+
 
 
 
