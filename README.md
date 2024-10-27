@@ -81,6 +81,7 @@ curl -X POST http://127.0.0.1:8080/auth?expired=true
 To run tests in test_app.py with coverage, use the following command:
 
 coverage run -m unittest discover
+
 coverage report -m
 
 
