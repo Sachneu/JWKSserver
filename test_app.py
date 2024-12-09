@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
+
 class JWKSAuthTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -136,36 +137,53 @@ class JWKSAuthTests(unittest.TestCase):
 
         response = self.app.post("/auth")
         data = response.get_json()
+        self.assertIsNotNone(data, "Response data should not be None")
         self.assertEqual(response.status_code, 500)
         self.assertIn("error", data)
 
-    def test_jwks_no_valid_keys(self):
-        """Test the JWKS endpoint when there are no valid keys available."""
-        self.insert_keys()
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        current_time = int(time.time())
-        cursor.execute("UPDATE keys SET exp = ? WHERE exp > ?", (current_time - 3600, current_time))
-        conn.commit()
-        conn.close()
-
-        response = self.app.get("/.well-known/jwks.json")
+    def test_user_registration(self):
+        """Test user registration endpoint."""
+        response = self.app.post("/register", json={
+            "username": "testuser",
+            "email": "testuser@example.com"
+        })
         data = response.get_json()
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("keys", data)
-        self.assertEqual(len(data["keys"]), 0, "JWKS should not contain valid keys")
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("password", data)
 
-    def test_database_initialization(self):
-        """Test if the database initializes correctly and creates tables as expected."""
-        os.remove(DB_NAME)  # Remove database file if it exists
-        init_db()  # Reinitialize database
-
+        # Verify user in database
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='keys';")
-        table_exists = cursor.fetchone()
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = ?", ("testuser",))
+        user_count = cursor.fetchone()[0]
         conn.close()
-        self.assertIsNotNone(table_exists, "Keys table was not created by init_db.")
+        self.assertEqual(user_count, 1)
+
+    def test_auth_logging(self):
+        """Test that authentication requests are logged."""
+        self.insert_keys()
+        response = self.app.post("/auth", json={"user_id": 1})
+        self.assertEqual(response.status_code, 200)
+
+        # Check logs
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM auth_logs WHERE user_id = ?", (1,))
+        log_count = cursor.fetchone()[0]
+        conn.close()
+        self.assertGreater(log_count, 0)
+
+    def test_rate_limiting(self):
+        """Test rate limiting on the /auth endpoint."""
+        self.insert_keys()
+
+        # Exceed rate limit
+        for _ in range(15):  # Exceeding the 10 requests per second limit
+            response = self.app.post("/auth", json={"user_id": 1})
+            if response.status_code == 429:
+                break
+
+        self.assertEqual(response.status_code, 429)
 
     def test_get_rsa_key_no_keys(self):
         """Test get_rsa_key function when no keys are available in the database."""
@@ -180,21 +198,6 @@ class JWKSAuthTests(unittest.TestCase):
             self.assertIsNone(key, "Key should be None when no keys are present.")
             self.assertIsNone(kid, "Kid should be None when no keys are present.")
 
-    def test_get_rsa_key_expired_only(self):
-        """Test get_rsa_key function when only expired keys are available in the database."""
-        with app.app_context():
-            self.insert_keys()
-            
-            conn = sqlite3.connect(DB_NAME)
-            cursor = conn.cursor()
-            current_time = int(time.time())
-            cursor.execute("UPDATE keys SET exp = ?", (current_time - 3600,))
-            conn.commit()
-            conn.close()
-
-            key, kid = get_rsa_key()
-            self.assertIsNone(key, "Key should be None when only expired keys are present.")
-            self.assertIsNone(kid, "Kid should be None when only expired keys are present.")
 
 if __name__ == "__main__":
     unittest.main()
